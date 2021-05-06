@@ -11,11 +11,12 @@ import time
 
 import shutil
 import os
+from constants import cwd
 
 
-JAR_NAME = "GoSwift.jar"  # Jar file to run
-OUTPUT_FOLDER = "outputlogs/"  # Where to put output files
-INPUT_FOLDER = "logs/"  # Where input logs are located
+JAR_NAME = cwd + "/GoSwift.jar"  # Jar file to run
+OUTPUT_FOLDER = cwd + "/outputlogs/"  # Where to put output files
+INPUT_FOLDER = cwd + "/logs/"  # Where input logs are located
 
 ## This is needed for one java version.. One for Java 8 and other for later
 #VMoptions = " --add-modules java.xml.bind"
@@ -68,12 +69,12 @@ def call_params(paramString, inputFile, outputFile):
     FNULL = open(os.devnull, 'w')  # To write output to devnull, we dont care about it
 
     # No java 8
-    #subprocess.call(["java", "-jar", "--add-modules", "java.xml.bind", JAR_NAME] + parameters, stdout=FNULL,
+    # subprocess.call(["java", "-jar", "--add-modules", "java.xml.bind", JAR_NAME] + parameters, stdout=FNULL,
     #                stderr=open("errorlogs/error_" + outputFile, "w"))  # blocking
 
     # Java 8
     subprocess.call(["java", "-jar", JAR_NAME] + parameters, stdout=FNULL,
-                    stderr=open("errorlogs/error_" + outputFile, "w"))  # blocking
+                    stderr=open(cwd + "/errorlogs/error_" + outputFile, "w"))  # blocking
     print("Done with {}".format(str(parameters)))
 
 
@@ -86,7 +87,7 @@ def move_files(split_nr, folder, results_folder):
     :return:
     """
     source = './output/'
-    dest1 = './' + results_folder + '/split' + str(split_nr) + "/" + folder + "/"
+    dest1 = cwd + "/" + results_folder + '/split' + str(split_nr) + "/" + folder + "/"
 
     files = os.listdir(source)
 
@@ -95,7 +96,7 @@ def move_files(split_nr, folder, results_folder):
         shutil.move(source+f, dest1)
 
 
-def run_sequences(log_path, results_folder, sequence_threshold=5):
+def run_sequences(log_path, results_folder, sequence_threshold=5, k_value=None, split_perc=None):
     """
     Runs GoSwift.jar with 4 different sets of parameters, to create sequential encodings.
     :param log_path:
@@ -114,7 +115,7 @@ def run_sequences(log_path, results_folder, sequence_threshold=5):
 
     for paramString, techName, folder in paramStrings:
         print("Working on {}".format(techName))
-        for splitNr in range(5):
+        for splitNr in range(k_value):
             
             folder_name = "./output/"
             if not os.path.exists(folder_name):

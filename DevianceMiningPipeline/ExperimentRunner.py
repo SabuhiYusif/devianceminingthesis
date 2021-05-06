@@ -6,9 +6,13 @@ Author: Joonas Puura
 
 from random import shuffle
 import os
+import subprocess
 
 import pandas as pd
 import numpy as np
+from sklearn.linear_model import LogisticRegression
+
+from constants import cwd
 
 import shutil
 
@@ -19,7 +23,7 @@ from sklearn.feature_selection import SelectKBest, chi2
 from opyenxes.data_out.XesXmlSerializer import XesXmlSerializer
 from opyenxes.factory.XFactory import XFactory
 
-from deviancecommon import read_XES_log
+from deviancecommon import read_XES_log, split_log_train_test
 from baseline_runner import run_baseline
 from declaredevmining import run_deviance_new
 from sequence_runner import run_sequences
@@ -33,6 +37,9 @@ from skfeature.function.similarity_based import fisher_score
 from sklearn.decomposition import PCA
 from collections import defaultdict
 
+import pm4py
+from pm4py.objects.log.util import func
+from pm4py.objects.log.log import EventLog
 
 from payload_extractor import run_payload_extractor
 
@@ -53,6 +60,28 @@ def fisher_calculation(X, y):
 
     #for i in range(X.shape[1]):
     #    print(X[:,i].dtype)
+
+    # feature_mean = np.mean(X, axis=0)
+
+    # print(X)
+    # print(type(X))
+    # print("DSAJLDKJASLKJDLKASJDLJASDJLAKSJD")
+    # print(type(X))
+    # print(X[0])
+    # print(X.data)
+    filter_arr = []
+    for element in X:
+        arr = []
+        # if the element is completely divisble by 2, set the value to True, otherwise False
+        for e in element:
+            if isinstance(e, np.number) or isinstance(e, float):
+                arr.append(e)
+        filter_arr.append(arr)
+
+    # X = filter_arr
+    # print(filter_arr)
+    # print(type(filter_arr))
+    X = np.array(filter_arr)
     feature_mean = np.mean(X, axis=0)
     #feature_var = np.var(X, axis=0)
 
@@ -83,7 +112,9 @@ def fisher_calculation(X, y):
         Fr[i] = n_positive * np.power(pos_means[i] - feature_mean[i], 2) + \
                 n_negative * np.power(neg_means[i] - feature_mean[i], 2)
 
-        Fr[i] /= (n_positive * pos_variances[i] + n_negative * neg_variances[i])
+        denomirator = (n_positive * pos_variances[i] + n_negative * neg_variances[i])
+        if denomirator != 0:
+            Fr[i] /= denomirator
 
     return Fr
 
@@ -131,18 +162,31 @@ class ModelEvaluation:
 
     def print_statistics_drive(self):
         print("Statistics for {}".format(self.name))
-        print("{} {} {} {} {} {} {} {} {} {}".format(np.mean(self.accuracies),
-                                                     np.std(self.accuracies), np.mean(self.auc), np.std(self.auc),
-                                                     np.mean(self.f1), np.std(self.f1),
-                                                     np.mean(self.recall), np.std(self.recall), np.mean(self.precision),
-                                                     np.std(self.precision)))
+        print("{} {} {} {} {}".format(np.mean(self.accuracies),
+                                                     # np.std(self.accuracies),
+                                                     np.mean(self.auc),
+                                                     # np.std(self.auc),
+                                                     np.mean(self.f1),
+                                                     # np.std(self.f1),
+                                                     np.mean(self.recall),
+                                                     # np.std(self.recall),
+                                                     np.mean(self.precision)
+                                                     # np.std(self.precision)
+              ))
         print("")
 
     def write_statistics_file(self, filePath):
         text = "Statistics for {}".format(self.name) + "\n" + "{} {} {} {} {} {} {} {} {} {}".format(
             np.mean(self.accuracies),
-            np.std(self.accuracies), np.mean(self.auc), np.std(self.auc), np.mean(self.f1), np.std(self.f1),
-            np.mean(self.recall), np.std(self.recall), np.mean(self.precision), np.std(self.precision)) + "\n"
+            # np.std(self.accuracies),
+            np.mean(self.auc),
+            # np.std(self.auc),
+            np.mean(self.f1),
+            # np.std(self.f1),
+            np.mean(self.recall),
+            # np.std(self.recall),
+            np.mean(self.precision)) + "\n"
+            # np.std(self.precision)) + "\n"
 
         self.add_to_file(filePath, text)
 
@@ -160,7 +204,8 @@ class ExperimentRunner:
     def __init__(self, experiment_name, output_file, results_folder, inp_path, log_name, output_folder, log_template,
                  dt_max_depth=15, dt_min_leaf=10, selection_method="fisher", selection_counts=None,
                  coverage_threshold=None, sequence_threshold=5, payload=False, payload_settings=None,
-                 reencode=False, payload_type=None, payload_dwd_settings=None):
+                 reencode=False, payload_type=None, payload_dwd_settings=None, k_value=1, split_perc=None,
+                 classifier=None, max_depth=None, min_samples=None):
 
         if not payload_type:
             self.payload_type = "normal"
@@ -172,9 +217,12 @@ class ExperimentRunner:
 
         self.payload = payload
         self.payload_settings = payload_settings
-
         self.counter = 0
-
+        self.k_value = k_value
+        self.split_perc = float(split_perc)
+        self.classifier = classifier
+        self.max_depth = max_depth
+        self.min_samples = min_samples
         self.reencode = reencode
 
         self.experiment_name = experiment_name
@@ -286,18 +334,27 @@ class ExperimentRunner:
             return models
 
     @staticmethod
-    def generate_cross_validation_logs(log, log_name, output_folder):
-        split_perc = 0.2
+    def generate_cross_validation_logs(log, log_name, output_folder, split_perc):
+        # split_perc = 0.2
         log_size = len(log)
-        partition_size = int(split_perc * log_size)
-        for log_nr in range(5):
+        partition_size = int(float(split_perc) * log_size)
+        for log_nr in range(1):
+            print("LOG NR " + str(log_nr))
             new_log = XFactory.create_log(log.get_attributes().clone())
+            # test_log = XFactory.create_log(log.get_attributes().clone())
             for elem in log.get_extensions():
                 new_log.get_extensions().add(elem)
+
+            # for elem in log.get_extensions():
+            #     test_log.get_extensions().add(elem)
 
             new_log.__classifiers = log.get_classifiers().copy()
             new_log.__globalTraceAttributes = log.get_global_trace_attributes().copy()
             new_log.__globalEventAttributes = log.get_global_event_attributes().copy()
+
+            # test_log.__classifiers = log.get_classifiers().copy()
+            # test_log.__globalTraceAttributes = log.get_global_trace_attributes().copy()
+            # test_log.__globalEventAttributes = log.get_global_event_attributes().copy()
 
             # Add first part.
             for i in range(0, (log_nr * partition_size)):
@@ -307,25 +364,34 @@ class ExperimentRunner:
             for i in range((log_nr + 1) * partition_size, log_size):
                 new_log.append(log[i])
 
+
+            # with open("/home/sabuhi/Thesis/devianceminingthesis/DevianceMiningPipeline/logs/" + log_name[:-4] + "_" + str(log_nr + 1) + "_train.xes", "w") as file:
+            #     XesXmlSerializer().serialize(new_log, file)
+
             # This is the test partitions, added to end
             for i in range(log_nr * partition_size, (log_nr + 1) * partition_size):
                 if i >= log_size:
                     break  # edge case
                 new_log.append(log[i])
+            #     test_log.append(log[i])
+            #
+            # with open("/home/sabuhi/Thesis/devianceminingthesis/DevianceMiningPipeline/logs/" + log_name[:-4] + "_" + str(log_nr + 1) + "_test.xes", "w") as file:
+            #     XesXmlSerializer().serialize(test_log, file)
 
             with open(output_folder + "/" + log_name[:-4] + "_" + str(log_nr + 1) + ".xes", "w") as file:
                 XesXmlSerializer().serialize(new_log, file)
 
-            with open("logs/" + log_name[:-4] + "_" + str(log_nr + 1) + ".xes", "w") as file:
+            with open(cwd + "/logs/" + log_name[:-4] + "_" + str(log_nr + 1) + ".xes", "w") as file:
                 XesXmlSerializer().serialize(new_log, file)
 
     @staticmethod
-    def create_folder_structure(directory, payload=False, payload_type=None):
+    def create_folder_structure(directory, payload=False, payload_type=None, k_value=None):
+        directory = cwd + "/xray_results"
         if not os.path.exists(directory):
             os.makedirs(directory)
 
             # first level
-            for i in range(1, 6):
+            for i in range(1, k_value + 1):
                 os.makedirs(directory + "/" + "split" + str(i))
 
                 # second level
@@ -335,6 +401,7 @@ class ExperimentRunner:
                 os.makedirs(directory + "/" + "split" + str(i) + "/" + "mra")
                 os.makedirs(directory + "/" + "split" + str(i) + "/" + "tr")
                 os.makedirs(directory + "/" + "split" + str(i) + "/" + "tra")
+                # os.makedirs(directory + "/" + "split" + str(i) + "/" + "hybrid")
 
                 if payload:
                     if payload_type == "normal" or "both":
@@ -343,22 +410,49 @@ class ExperimentRunner:
                         os.makedirs(directory + "/" + "split" + str(i) + "/" + "dwd")
 
     @staticmethod
-    def cross_validation_pipeline(inp_path, log_name, output_folder):
+    def cross_validation_pipeline(inp_path, log_name, output_folder, split_perc, split_method):
         # 1. Load file
         log = read_XES_log(inp_path + "/" + log_name)
 
-        # 2. Randomize order of traces.
-        shuffle(log)
+        # exec(open("/home/sabuhi/PycharmProjects/scientificProject/splitting.py " + log_name + " " + split_method).read())
+        subprocess.run("python3 /home/sabuhi/PycharmProjects/scientificProject/splitting.py " + log_name + " " + split_method + " " + split_perc, shell=True)
 
-        # 3. Split into 5 parts for cross validation
-        ExperimentRunner.generate_cross_validation_logs(log, log_name, output_folder)
+        # if split_method == "random":
+        #     shuffle(log)
+        #     train, test = split_log_train_test(log, 0.8)
+        #
+        #     # with open(output_folder + "/" + "trainnn.xes", "w") as file:
+        #     #     XesXmlSerializer().serialize(train, file)
+        #     # with open(output_folder + "/" + "testt.xes", "w") as file:
+        #     #     XesXmlSerializer().serialize(test, file)
+        #     return
+        # elif split_method == "temporal":
+        #     log = ExperimentRunner.order_by_start_date(log)
+        #     # print("LOOOG")
+        #     # print(type(new_log))
+        #
+        #     return
+        # elif split_method == "temporal_strict":
+        #     event_stream = pm4py.convert_to_event_stream(log)
+        #     temporal_strict_order = func.filter_(lambda e: e['time:timestamp'], event_stream)
+        #     # ExperimentRunner.export_log(new_log, "testtt_merged_xray.xes")
+        # # 3. Split into 5 parts for cross validation
+        # # print(log)
+
+
+        # ExperimentRunner.generate_cross_validation_logs(log, log_name, output_folder, split_perc)
+    #
+    # @staticmethod
+    # def export_log(log, file_name="dasd"):
+    #     pm4py.write_xes(log,
+    #                     "/home/sabuhi/Thesis/devianceminingthesis/DevianceMiningPipeline/logs/dasdasd.xes")
 
     @staticmethod
     def read_baseline_log(results_folder, split_nr):
         split = "split" + str(split_nr)
         encoding = "base"
 
-        file_loc = results_folder + "/" + split + "/" + encoding
+        file_loc = cwd + "/" + results_folder + "/" + split + "/" + encoding
         train_path = file_loc + "/" + "baseline_train.csv"
         test_path = file_loc + "/" + "baseline_test.csv"
         train_df = pd.read_csv(train_path, sep=",", index_col="Case_ID", na_filter=False)
@@ -371,7 +465,7 @@ class ExperimentRunner:
         split = "split" + str(split_nr)
         encoding = "payload"
 
-        file_loc = results_folder + "/" + split + "/" + encoding
+        file_loc = cwd + "/" + results_folder + "/" + split + "/" + encoding
         train_path = file_loc + "/" + "payload_train.csv"
         test_path = file_loc + "/" + "payload_test.csv"
         train_df = pd.read_csv(train_path, sep=",", index_col="Case_ID", na_filter=False)
@@ -384,7 +478,7 @@ class ExperimentRunner:
         split = "split" + str(split_nr)
         encoding = "dwd"
 
-        file_loc = results_folder + "/" + split + "/" + encoding
+        file_loc = cwd + "/" + results_folder + "/" + split + "/" + encoding
         train_path = file_loc + "/" + "dwd_train.csv"
         test_path = file_loc + "/" + "dwd_test.csv"
         train_df = pd.read_csv(train_path, sep=",", index_col="Case_ID", na_filter=False)
@@ -398,7 +492,7 @@ class ExperimentRunner:
         split = "split" + str(split_nr)
         encoding = "declare"
 
-        file_loc = results_folder + "/" + split + "/" + encoding
+        file_loc = cwd + "/" + results_folder + "/" + split + "/" + encoding
         train_path = file_loc + "/" + "declare_train.csv"
         test_path = file_loc + "/" + "declare_test.csv"
         train_df = pd.read_csv(train_path, sep=",", index_col="Case_ID", na_filter=False)
@@ -409,7 +503,7 @@ class ExperimentRunner:
     @staticmethod
     def read_sequence_log(results_folder, encoding, split_nr):
         split = "split" + str(split_nr)
-        file_loc = results_folder + "/" + split + "/" + encoding
+        file_loc = cwd + "/" + results_folder + "/" + split + "/" + encoding
         train_path = file_loc + "/" + "globalLog.csv"
         global_df = pd.read_csv(train_path, sep=";", index_col="Case_ID", na_filter=False)
 
@@ -609,14 +703,14 @@ class ExperimentRunner:
             # Alternative version
             scores = fisher_calculation(X_train, y_train)
             selected_ranks = fisher_score.feature_ranking(scores)
-    
+
             threshold = self.coverage_threshold
-    
+
             # Start selecting from selected_ranks until every trace is covered N times
             trace_remaining = dict()
             for i, trace_name in enumerate(train_df.index.values):
                 trace_remaining[i] = threshold
-    
+
             chosen = 0
             #chosen_ranks = []
             # Go from higher to lower
@@ -633,17 +727,16 @@ class ExperimentRunner:
                             # Only choose as a feature, if there is at least one trace covered by it.
                             #chosen_ranks.append(rank)
                             #is_chosen = True
-    
                         trace_remaining[k] -= 1
                         if trace_remaining[k] <= 0:
                             marked_for_deletion.add(k)
-    
+
                 for k in marked_for_deletion:
                     del trace_remaining[k]
-    
+
             X_train = X_train[:, selected_ranks[:chosen]]
             X_test = X_test[:, selected_ranks[:chosen]]
-    
+
             feature_names = train_df.columns[selected_ranks[:chosen]]
 
 
@@ -731,6 +824,11 @@ class ExperimentRunner:
 
         # Train classifier
         clf = DecisionTreeClassifier(max_depth=self.dt_max_depth, min_samples_leaf=self.dt_min_leaf)
+        # clf = LogisticRegression(random_state=2)
+        # X_train = np.nan_to_num(X_train)
+        # y_train = np.nan_to_num(y_train)
+        print(X_train)
+        print(y_train)
         clf.fit(X_train, y_train)
 
         # True to export tree .dot file
@@ -796,7 +894,7 @@ class ExperimentRunner:
         """
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             train_df, test_df = ExperimentRunner.read_baseline_log(self.results_folder, split_nr)
 
             tr_result = self.train(train_df, test_df, split_nr=split_nr, exp_name="baseline")
@@ -819,7 +917,7 @@ class ExperimentRunner:
         results = []
 
         # Separately for every split. Reduce total number of file parsing.
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             train_df, test_df = ExperimentRunner.read_declare_log(self.results_folder, split_nr)
             tr_result = self.train(train_df, test_df, split_nr=split_nr, exp_name="declare")
 
@@ -840,7 +938,7 @@ class ExperimentRunner:
         """
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             # Read the log
             train_df, test_df = ExperimentRunner.read_sequence_log(self.results_folder, encoding, split_nr)
 
@@ -864,7 +962,7 @@ class ExperimentRunner:
         encodings = ["mr", "mra", "tr", "tra"]
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             dec_train_df, dec_test_df = ExperimentRunner.read_declare_log(self.results_folder, split_nr)
             seq_train_list = []
             seq_test_list = []
@@ -900,7 +998,7 @@ class ExperimentRunner:
         :return:
         """
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             baseline_train_df, baseline_test_df = ExperimentRunner.read_baseline_log(self.results_folder, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_payload_log(self.results_folder, split_nr)
 
@@ -925,7 +1023,7 @@ class ExperimentRunner:
         """
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             train_df, test_df = ExperimentRunner.read_baseline_log(self.results_folder, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_payload_log(self.results_folder, split_nr)
 
@@ -953,7 +1051,7 @@ class ExperimentRunner:
         """
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             train_df, test_df = ExperimentRunner.read_baseline_log(self.results_folder, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_declare_with_data_log(self.results_folder, split_nr)
 
@@ -981,7 +1079,7 @@ class ExperimentRunner:
 
         results = []
         # Separately for every split. Reduce total number of file parsing.
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             train_df, test_df = ExperimentRunner.read_declare_log(self.results_folder, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_payload_log(self.results_folder, split_nr)
 
@@ -1008,7 +1106,7 @@ class ExperimentRunner:
 
         results = []
         # Separately for every split. Reduce total number of file parsing.
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             train_df, test_df = ExperimentRunner.read_declare_log(self.results_folder, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_declare_with_data_log(self.results_folder, split_nr)
 
@@ -1033,7 +1131,7 @@ class ExperimentRunner:
         """
         results = []
         # Separately for every split. Reduce total number of file parsing.
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             train_df, test_df = ExperimentRunner.read_declare_log(self.results_folder, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_payload_log(self.results_folder, split_nr)
             payload_train_df_2, payload_test_df_2 = ExperimentRunner.read_declare_with_data_log(self.results_folder, split_nr)
@@ -1063,7 +1161,7 @@ class ExperimentRunner:
         """
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             # Read the log
             train_df, test_df = ExperimentRunner.read_sequence_log(self.results_folder, encoding, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_payload_log(self.results_folder, split_nr)
@@ -1093,7 +1191,7 @@ class ExperimentRunner:
         """
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             # Read the log
             train_df, test_df = ExperimentRunner.read_sequence_log(self.results_folder, encoding, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_declare_with_data_log(self.results_folder, split_nr)
@@ -1123,7 +1221,7 @@ class ExperimentRunner:
         encodings = ["mr", "mra", "tr", "tra"]
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             dec_train_df, dec_test_df = ExperimentRunner.read_declare_log(self.results_folder, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_payload_log(self.results_folder, split_nr)
             seq_train_list = []
@@ -1164,7 +1262,7 @@ class ExperimentRunner:
         encodings = ["mr", "mra", "tr", "tra"]
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             dec_train_df, dec_test_df = ExperimentRunner.read_declare_log(self.results_folder, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_declare_with_data_log(self.results_folder, split_nr)
             seq_train_list = []
@@ -1204,7 +1302,7 @@ class ExperimentRunner:
         encodings = ["mr", "mra", "tr", "tra"]
 
         results = []
-        for split_nr in range(1, 6):
+        for split_nr in range(1, 2):
             dec_train_df, dec_test_df = ExperimentRunner.read_declare_log(self.results_folder, split_nr)
             payload_train_df, payload_test_df = ExperimentRunner.read_declare_with_data_log(self.results_folder, split_nr)
             payload_train_df_2, payload_test_df_2 = ExperimentRunner.read_payload_log(self.results_folder, split_nr)
@@ -1243,14 +1341,17 @@ class ExperimentRunner:
         # MAKE SURE ALL METHODS USED ARE HERE. AND METHODS NOT USED ARE NOT!
         if not self.payload:
             print_order = ["bs", "dc", "tr", "tra", "mr", "mra", "hybrid"]
+            # if features["ia"]:
             print("Started working on baseline.")
             baseline_results = self.baseline_train()
             all_results["bs"] = self.interpret_results(baseline_results, "baseline")
 
+            # if features["declare"]:
             print("Started working on declare.")
             declare_results = self.declare_train()
             all_results["dc"] = self.interpret_results(declare_results, "declare")
 
+            # if features["seq"]:
             print("Started working on sequenceMR.")
             sequence_results = self.sequence_train("mr")
             all_results["mr"] = self.interpret_results(sequence_results, "sequence", "mr")
@@ -1330,7 +1431,6 @@ class ExperimentRunner:
                 declare_results = self.declare_train_with_dwd_data()
                 all_results["dc_dwd_payload"] = self.interpret_results(declare_results, "declare_payload_dwd")
 
-
                 print("Started working on hybrid.")
                 payload_results = self.hybrid_train()
                 all_results["hybrid"] = self.interpret_results(payload_results, "hybrid")
@@ -1375,22 +1475,27 @@ class ExperimentRunner:
                         evalTrain.write_statistics_file_noname(self.train_output_file)
                         evalTest.write_statistics_file_noname(self.test_output_file)
 
-    def prepare_cross_validation(self):
-        self.cross_validation_pipeline(self.inp_path, self.log_name, self.output_folder)
+    def prepare_cross_validation(self, split_perc, split_method):
+        self.cross_validation_pipeline(self.inp_path, self.log_name, self.output_folder, split_perc, split_method)
 
     def prepare_data(self):
-        self.create_folder_structure(self.results_folder, payload=self.payload, payload_type=self.payload_type)
-        run_baseline(self.experiment_name, self.log_path, self.results_folder)
-        run_deviance_new(self.log_path, self.results_folder, reencode=self.reencode)
-        run_sequences(self.log_path_seq, self.results_folder, sequence_threshold=self.sequence_threshold)
+        self.create_folder_structure(self.results_folder, payload=self.payload, payload_type=self.payload_type, k_value=self.k_value)
+        # if features["ia"]:
+        run_baseline(self.experiment_name, self.log_path, self.results_folder, self.k_value, self.split_perc)
+
+        # if features["declare"]:
+        run_deviance_new(self.log_path, self.results_folder, reencode=self.reencode, k_value=self.k_value, split_perc=self.split_perc)
+
+        # if features["seq"]:
+        run_sequences(self.log_path_seq, self.results_folder, sequence_threshold=self.sequence_threshold, k_value=self.k_value, split_perc=self.split_perc)
 
         if self.payload:
             if self.payload_type == "normal" or self.payload_type == "both":
-                run_payload_extractor(self.log_path, self.payload_settings, self.results_folder)
+                run_payload_extractor(self.log_path, self.payload_settings, self.results_folder, self.k_value, self.split_perc)
 
             if self.payload_type == "dwd" or self.payload_type == "both":
-                run_declare_with_data(self.log_path, self.payload_dwd_settings, self.results_folder)
+                run_declare_with_data(self.log_path, self.payload_dwd_settings, self.results_folder, self.k_value, self.split_perc)
 
     def clean_data(self):
-        shutil.rmtree(self.results_folder)
+        shutil.rmtree("./xray/")
 

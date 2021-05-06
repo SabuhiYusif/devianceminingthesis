@@ -1,0 +1,9 @@
+activityCode;activityName
+a4;perform_surgery-complete
+i4;check_X_ray_risk-complete
+j2;apply_cast-complete
+j4;perform_X_ray-complete
+l8;prescribe_rehabilitation-complete
+o4;examine_patient-complete
+p1;perform_reposition-complete
+p3;remove_cast-complete

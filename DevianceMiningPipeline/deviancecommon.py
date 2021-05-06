@@ -70,8 +70,10 @@ def xes_to_positional(log, label=True):
     for trace in log:
         trace_attribs = trace.get_attributes()
         trace_name = trace_attribs["concept:name"].get_value()
+
         if label:
             trace_label = int(trace_attribs["Label"].get_value())
+            # print("Trace attr: " + trace_attribs["Label"].get_value() + " - " + str(trace_label) + " , TRACE name: " + str(trace_name))
 
         events = {}
         for pos, event in enumerate(trace):

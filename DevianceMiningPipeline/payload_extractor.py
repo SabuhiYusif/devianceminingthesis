@@ -1,8 +1,10 @@
 """
 Pure data payload extraction method and encoding.
 """
+import logging
+import bisect
 
-
+from constants import cwd
 from deviancecommon import read_XES_log, split_log_train_test
 
 from opyenxes.model import XAttributeBoolean, XAttributeLiteral, XAttributeTimestamp, XAttributeDiscrete, \
@@ -10,9 +12,13 @@ from opyenxes.model import XAttributeBoolean, XAttributeLiteral, XAttributeTimes
 from collections import defaultdict
 
 import pandas as pd
+import numpy as np
 import os, shutil
 
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+
+
+logger = logging.getLogger('tcpserver')
 
 def get_attribute_type(val):
     if isinstance(val, XAttributeLiteral.XAttributeLiteral):
@@ -288,7 +294,6 @@ class PayloadExtractor:
                 first: first_events_attribute_value,
                 last: last_events_attribute_value,
                 length: length_of_trace
-            
             }
             
             """
@@ -306,7 +311,6 @@ class PayloadExtractor:
 
                 trace_data[(None, "trace" + ":" + attrib_name, "first", attrib_type)] = str(value)
 
-
             # handle trace extra attribs
 
             for option in settings["trace_extra"]:
@@ -315,7 +319,6 @@ class PayloadExtractor:
                 elif option[0] == "time":
                     time_option = option[1]
                     pass # Calculate based on time_option, if days then calculate how many days between latest and first event
-
             for event in trace:
 
                 attribs = event.get_attributes()
@@ -433,7 +436,7 @@ class PayloadExtractor:
                     trace_data[key] = val[1] / val[0]
 
             log_data.append(trace_data)
-
+        # print("LOOOG DATA ", log_data)
         return log_data
 
     def extract_trace_payload(self, trace, mode=None):
@@ -652,7 +655,7 @@ def settings_from_cfg(settings_file):
                  "--MISSING--", "--ONE HOT ENCODING--"])
 
     mode = None
-    with open(settings_file, "r") as f:
+    with open(cwd + "/" + settings_file, "r") as f:
 
         for line in f:
             stripped = line.strip()
@@ -696,6 +699,11 @@ def settings_from_cfg(settings_file):
 
 def handle_data(k, trace_data, trace_df_data, settings):
     if k not in trace_data:
+        # print("dasd", k)
+        # print("dasd K0: ", k[0])
+        # print("dasd K:1 ", k[1])
+        # print("dasdK: 2: ", k[2])
+        # print("dasdK 3: ", k[3])
         if k[3] == "boolean":
             if "boolean" in settings["missing"]:
                 mode = settings["missing"]["boolean"]
@@ -725,6 +733,11 @@ def handle_data(k, trace_data, trace_df_data, settings):
         else:
             print("ERROR! Shouldn't be here, not implemented for trace {}".format(k))
     else:
+        # print("dasd", k)
+        # print("dasd K0: ", k[0])
+        # print("dasd K:1 ", k[1])
+        # print("dasdK: 2: ", k[2])
+        # print("dasdK 3: ", k[3])
         if k[3] == "boolean":
             if trace_data[k] == "true":
                 trace_df_data.append(1)
@@ -746,10 +759,19 @@ def handle_data(k, trace_data, trace_df_data, settings):
             print("ERROR! Not implemented for {}".format(k))
             raise Exception("Not implemented! Add to ignore in config file!")
 
+def ignore(ignore):
+    print(ignore)
+    with open("settings.cfg", "r") as in_file:
+        buf = in_file.readlines()
+
+    with open("settings.cfg", "w") as out_file:
+        for line in buf:
+            if line == "--TRACE IGNORED--\n":
+                line = line + ignore + "\n"
+            out_file.write(line)
 
 def build_dataframes(train_data, test_data, settings):
     # Booleans will be false, true or NA (missing), missing if not given by settings
-
     train_df_data = []
     test_df_data = []
 
@@ -768,13 +790,16 @@ def build_dataframes(train_data, test_data, settings):
     # columns to one_hot_encode
     selected_one_hot = set()
     for k in all_keys:
-
+        # logger.info()
+        print("KKKDASDAS ", k)
         if k in ("length", "concept:name"):
             if k == "concept:name":
                 names.append("Case_ID")
             else:
                 names.append(k)
         else:
+            print("KKKKK", k)
+            print("SETTINGS ", settings)
             if not k[0]:
                 # if the first one is None, which means that we have aggregation over all events!
                 name = k[1] + "|" + k[2] + "|" + k[3]
@@ -786,15 +811,21 @@ def build_dataframes(train_data, test_data, settings):
             if (k[1], k[3]) in settings["one_hot_encode"]:
                 selected_one_hot.add(name)
 
+    print("SETTINGS ", settings)
     # Given keys, go through all data and create dataframes!
     for trace_data in train_data:
+        # print("TRACE DATA ", trace_data)
         trace_df_data = []
+        # for k in all_keys:
+        #     if k[3] == "timestamp":
+        #         ignore(k[1][6:])
         for k in all_keys:
             handle_data(k, trace_data, trace_df_data, settings)
 
         train_df_data.append(trace_df_data)
 
     for trace_data in test_data:
+
         trace_df_data = []
         for k in all_keys:
             handle_data(k, trace_data, trace_df_data, settings)
@@ -808,23 +839,33 @@ def build_dataframes(train_data, test_data, settings):
     # save transformations to file
     transformations = []
     # Do one hot encodings, if needed
+    print("ONE HOT ENCODING", selected_one_hot)
     if len(selected_one_hot) > 0:
         for selection in selected_one_hot:
+            print("SELECTION ", selection)
             train_df[selection] = pd.Categorical(train_df[selection])
             test_df[selection] = pd.Categorical(test_df[selection])
 
             le = LabelEncoder()
-            le.fit(train_df[selection])
+            le.fit(list(train_df[selection]) + ['missing'])
 
             classes = le.classes_
-            test_df[selection] = [x if x in set(classes) else "missing" for x in test_df[selection]]
+            # print("XLASSES :", classes)
+            print("LEadsd ", test_df[selection])
 
+            test_df[selection] = [x if x in set(classes) else "missing" for x in test_df[selection]]
+            # le_classes = le.classes_.tolist()
+            # bisect.insort_left(le_classes, 'missing')
+            # le.classes_ = le_classes
             transformations.append(classes)
+
+            print("LE ", test_df[selection])
+            print("LE adsdas", train_df[selection])
 
             train_df[selection] = le.transform(train_df[selection])
             test_df[selection] = le.transform(test_df[selection])
 
-            ohe = OneHotEncoder()
+            ohe = OneHotEncoder(handle_unknown='ignore')
             ohe.fit(train_df[selection].values.reshape(-1, 1))
 
             train_transformed = ohe.transform(train_df[selection].values.reshape(-1, 1)).toarray()
@@ -863,15 +904,16 @@ def build_dataframes(train_data, test_data, settings):
     return train_df, test_df
 
 
-def payload_extractor(inp_folder, log_name, settings_file):
+def payload_extractor(inp_folder, log_name, settings_file, split_perc):
 
     log = read_XES_log(log_name)
 
-    train, test = split_log_train_test(log, 0.8)
+    train, test = split_log_train_test(log, 1 - split_perc)
 
     print("Lengths of logs train: {}, test: {}".format(len(train), len(test)))
     pex = PayloadExtractor()
 
+    print("SETTINGS FILE", settings_file)
     settings = settings_from_cfg(settings_file)
 
     ## Get first forms of data
@@ -892,20 +934,20 @@ def payload_extractor(inp_folder, log_name, settings_file):
 
 def move_payload_files(inp_folder, output_folder, split_nr):
     source = inp_folder # './baselineOutput/'
-    dest1 = './' + output_folder + '/split' + str(split_nr) + "/payload/"
+    dest1 = cwd + '/' + output_folder + '/split' + str(split_nr) + "/payload/"
     files = os.listdir(source)
     for f in files:
         shutil.move(source + f, dest1)
 
 
-def run_payload_extractor(log_path, settings_file, results_folder):
-    for logNr in range(5):
+def run_payload_extractor(log_path, settings_file, results_folder, k_value, split_perc):
+    for logNr in range(k_value):
         logPath = log_path.format(logNr + 1)
         folder_name = "./payloadOutput/"
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
 
-        payload_extractor(folder_name, logPath, settings_file)
+        payload_extractor(folder_name, logPath, settings_file, split_perc)
         move_payload_files(folder_name, results_folder, logNr + 1)
 
 
@@ -931,7 +973,7 @@ def payload_extractor_trial(log_name, settings_file):
 if __name__ == "__main__":
 
     log = "logs/sepsis_tagged_er.xes"
-    settings = "sepsis_settings.cfg"
+    settings = "settings.cfg"
     train_df, test_df = payload_extractor_trial(log_name = log, settings_file = settings)
 
     #print(test_df)

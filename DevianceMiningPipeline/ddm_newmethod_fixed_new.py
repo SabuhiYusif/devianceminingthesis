@@ -1,7 +1,7 @@
 """
 Last version for data-aware declare mining
 """
-
+from constants import cwd
 from declaretemplates_data import *
 from deviancecommon import read_XES_log, xes_to_data_positional
 from declaredevmining import split_log_train_test, extract_unique_events_transformed
@@ -10,9 +10,6 @@ from declaredevmining import filter_candidates_by_support, count_classes
 from skfeature.function.similarity_based import fisher_score
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier, _tree, export_graphviz
-
-
-
 
 import numpy as np
 import pandas as pd
@@ -28,13 +25,13 @@ def fisher_calculation(X, y):
     :return:
     """
 
-    #print(X[0,:])
+    # print(X[0,:])
     # Find mean and variance for full dataset
 
-    #for i in range(X.shape[1]):
+    # for i in range(X.shape[1]):
     #    print(X[:,i].dtype)
     feature_mean = np.mean(X, axis=0)
-    #feature_var = np.var(X, axis=0)
+    # feature_var = np.var(X, axis=0)
 
     # Find variance for each class, maybe do normalization as well??
     # ID's for
@@ -53,8 +50,8 @@ def fisher_calculation(X, y):
     pos_means = np.mean(pos_samples, axis=0)
     neg_means = np.mean(neg_samples, axis=0)
 
-    #print(pos_variances)
-    #print(neg_variances)
+    # print(pos_variances)
+    # print(neg_variances)
 
     # Calculate Fisher score for each feature
     Fr = np.zeros(X.shape[1])
@@ -96,7 +93,7 @@ def find_if_satisfied_by_class(constraint_result, log, support_norm, support_dev
     for i, trace in enumerate(log):
         ## TODO: Find if it is better to have > 0 or != 0.
         if constraint_result[i] > 0:
-        #if constraint_result[i] != 0:
+            # if constraint_result[i] != 0:
             if trace["label"] == 1:
                 fulfill_dev += 1
             else:
@@ -142,7 +139,6 @@ def generate_train_candidate_constraints(candidates, templates, train_log, const
                 if not filter_t or (satis_normal or satis_deviant):
                     all_results[(template, candidate)] = constraint_result
 
-
     return all_results
 
 
@@ -160,7 +156,6 @@ def generate_test_candidate_constraints(candidates, templates, test_log, train_r
     return all_results
 
 
-
 def find_fulfillments_violations(candidate, template, log):
     """
     For each trace in positional log give fulfilled and violated positions
@@ -172,8 +167,6 @@ def find_fulfillments_violations(candidate, template, log):
 
     outp = apply_data_template_to_log(template, candidate, log)
     return outp
-
-
 
 
 def get_data_snapshots(trace, fulfilled, violated):
@@ -193,9 +186,7 @@ def get_data_snapshots(trace, fulfilled, violated):
         elif i in neg_locs:
             negative_snapshots.append(dict(current_snap))
 
-
     return positive_snapshots, negative_snapshots
-
 
 
 class DRC:
@@ -243,7 +234,6 @@ class DRC:
 
         return features_data
 
-
     def create_data_aware_features(self, train_log, test_log, ignored):
         # given log
         # 0.0. Extract events
@@ -264,7 +254,7 @@ class DRC:
         # --- Refined rule is - constraint + a decision rules / tree, learne
         # Reorder constraints for next level of decision tree .. It is exactly like Gini impurity or sth..
 
-        # Get templates from fabrizios article
+        # Get templates from Fabrizio's article
 
         """
         responded existence(A, B), data on A
@@ -294,14 +284,12 @@ class DRC:
         templates = ["alternate_precedence", "alternate_response", "chain_precedence", "chain_response",
                      "responded_existence", "response", "precedence"]
 
-
         inp_templates = templates + not_templates
 
         # play around with thresholds
 
         constraint_threshold = 0.1
         candidate_threshold = 0.1
-
 
         # Extract unique activities from log
         events_set = extract_unique_events_transformed(train_log)
@@ -323,21 +311,18 @@ class DRC:
         constraint_support_dev = int(deviant_count * constraint_threshold)
         constraint_support_norm = int(normal_count * constraint_threshold)
 
-        train_results = generate_train_candidate_constraints(candidates, inp_templates, train_log, constraint_support_norm,
+        train_results = generate_train_candidate_constraints(candidates, inp_templates, train_log,
+                                                             constraint_support_norm,
                                                              constraint_support_dev, filter_t=True)
-
-
 
         test_results = generate_test_candidate_constraints(candidates, inp_templates, test_log, train_results)
         print("Candidate constraints generated")
-
 
         ## Given selected constraints, find fulfillments and violations for each of the constraint.
         ## In this manner build positive and negative samples for data
 
         X_train, y_train, feature_names, train_trace_names = transform_results_to_numpy(train_results, train_log)
         X_test, y_test, _, test_trace_names = transform_results_to_numpy(test_results, test_log)
-
 
         # Turn to pandas df
         train_df = pd.DataFrame(X_train, columns=feature_names, index=train_trace_names)
@@ -355,7 +340,7 @@ class DRC:
         selected_ranks = fisher_score.feature_ranking(scores)
 
         threshold = 15
-        #chosen = 500
+        # chosen = 500
 
         real_selected_ranks = []
         # Start selecting from selected_ranks until every trace is covered N times
@@ -398,12 +383,12 @@ class DRC:
         new_test_feature_names = []
         new_test_features = []
 
-        count=0
+        count = 0
 
         for key in train_df.columns:
 
             count += 1
-            #print(key)
+            # print(key)
             # Go over all and find with data
             template = key[0]
             candidate = key[1]
@@ -431,7 +416,6 @@ class DRC:
                 for s in negative:
                     train_negative_samples.append((s, label, i))
 
-
             for i, trace in enumerate(outp_test):
                 fulfilled = trace[1]
                 violated = trace[2]
@@ -445,7 +429,7 @@ class DRC:
                     test_negative_samples.append((s, label, i))
 
             # Get all where fulfilled only. Train on train_positive_samples vs Label of log
-            ignored_features = set(ignored) # set([('Diagnose', 'literal')])
+            ignored_features = set(ignored)  # set([('Diagnose', 'literal')])
 
             collected_features = set()
             # Get all possible features for
@@ -457,11 +441,11 @@ class DRC:
                 for key2, val in neg_act.items():
                     collected_features.add(key2)
 
-
             features = list(collected_features)
 
             # Keep only features of boolean, literal, continuous and discrete
-            features = [feature for feature in features if feature[1] in set(["boolean", "continuous", "discrete", "literal"])]
+            features = [feature for feature in features if
+                        feature[1] in set(["boolean", "continuous", "discrete", "literal"])]
             features = [feature for feature in features if feature[0] not in ignored_features]
 
             # collect positive and negative samples for finding data condition:
@@ -471,7 +455,8 @@ class DRC:
             pos_activations = [(sample[2], sample[0]) for sample in train_positive_samples]
             neg_activations = [(sample[2], sample[0]) for sample in train_negative_samples]
 
-            feature_train_samples = self.create_sample(pos_activations, features, 1) + self.create_sample(neg_activations, features, 0)
+            feature_train_samples = self.create_sample(pos_activations, features, 1) + self.create_sample(
+                neg_activations, features, 0)
             # Crete pos and neg samples
             pos_samples = self.create_sample(positive_samples, features, 1)
             neg_samples = self.create_sample(negative_samples, features, 0)
@@ -482,8 +467,8 @@ class DRC:
 
             # Extract positive test samples, where fulfillments where fulfilled
             train_df = pd.DataFrame(features_data, columns=features_label)
-            test_pos_smpl = [(sample[2], sample[0]) for sample in test_positive_samples] # if sample[1] == 1]
-            test_neg_smpl = [(sample[2], sample[0]) for sample in test_negative_samples] # if sample[1] == 0]
+            test_pos_smpl = [(sample[2], sample[0]) for sample in test_positive_samples]  # if sample[1] == 1]
+            test_neg_smpl = [(sample[2], sample[0]) for sample in test_negative_samples]  # if sample[1] == 0]
 
             pos_test_samples = self.create_sample(test_pos_smpl, features, 1)
             neg_test_samples = self.create_sample(test_neg_smpl, features, 0)
@@ -494,7 +479,6 @@ class DRC:
             train_df.pop("id")
             train_ids = feature_train_df.pop("id")
             test_ids = test_df.pop("id")
-
 
             # Possible values for each literal value is those in train_df or missing
 
@@ -511,13 +495,26 @@ class DRC:
                     test_df[selection] = le.transform(test_df[selection])
                     feature_train_df[selection] = le.transform(feature_train_df[selection])
 
-                    ohe = OneHotEncoder(categories="auto") # Remove this for server.
+                    ohe = OneHotEncoder(categories="auto")  # Remove this for server.
                     ohe.fit(np.concatenate((test_df[selection].values.reshape(-1, 1),
-                                            feature_train_df[selection].values.reshape(-1, 1)), axis=0),)
+                                            feature_train_df[selection].values.reshape(-1, 1)), axis=0), )
+
+                    print("TRAIN TRANSFORM,", train_df[selection])
+                    print("TEST TRANSFORM,", test_df[selection])
 
                     train_transformed = ohe.transform(train_df[selection].values.reshape(-1, 1)).toarray()
-                    test_transformed = ohe.transform(test_df[selection].values.reshape(-1, 1)).toarray()
-                    feature_train_transformed = ohe.transform(feature_train_df[selection].values.reshape(-1, 1)).toarray()
+                    print("VALUES", test_df[selection].values)
+                    print("EMPTYNESS", test_df[selection].empty)
+                    # print("EMPTYNESS", test_df[selection].size)
+                    # print("EMPTYNESS", test_df[selection].name)
+                    # print("EMPTYNESS", test_df[selection][0])
+                    if test_df[selection].empty:
+                        test_transformed = []
+                    else:
+                        test_transformed = ohe.transform(test_df[selection].values.reshape(-1, 1)).toarray()
+
+                    feature_train_transformed = ohe.transform(
+                        feature_train_df[selection].values.reshape(-1, 1)).toarray()
 
                     dfOneHot = pd.DataFrame(train_transformed,
                                             columns=[(selection[0] + "_" + classes[i], selection[1]) for i in
@@ -547,7 +544,10 @@ class DRC:
             feature_train_data = feature_train_df.values
 
             train_predictions = data_dt.predict(feature_train_data)
-            test_predictions = data_dt.predict(test_df.values)
+            if test_df.empty:
+                test_predictions = []
+            else:
+                test_predictions = data_dt.predict(test_df.values)
 
             train_fts = feature_train_df.columns
             # Go through all traces again
@@ -631,28 +631,27 @@ class DRC:
 
                 # Save decision tree
                 if True:
-                    export_graphviz(data_dt, out_file="sample_dwd_trees/outputfile_{}.dot".format(str(key)),
+                    export_graphviz(data_dt, out_file=cwd + "/sample_dwd_trees/outputfile_{}.dot".format(str(key)),
                                     feature_names=list(map(str, train_fts)))
 
         return new_train_feature_names, new_train_features, new_test_feature_names, new_test_features
 
 
-
-def data_declare_main(inp_folder, log_name, ignored):
-
+def data_declare_main(inp_folder, log_name, ignored, split_perc):
     drc = DRC()
     log = read_XES_log(log_name)
 
     # Transform log into suitable data structures
     transformed_log = xes_to_data_positional(log)
 
-    train_log, test_log = split_log_train_test(transformed_log, 0.8)
-    #print(train_log[0])
+    train_log, test_log = split_log_train_test(transformed_log, 1-split_perc)
+    # print(train_log[0])
 
     train_case_ids = [tr["name"] for tr in train_log]
     test_case_ids = [tr["name"] for tr in test_log]
 
-    train_names, train_features, test_names, test_features = drc.create_data_aware_features(train_log, test_log, ignored)
+    train_names, train_features, test_names, test_features = drc.create_data_aware_features(train_log, test_log,
+                                                                                            ignored)
 
     train_dict = {}
     test_dict = {}
@@ -665,11 +664,10 @@ def data_declare_main(inp_folder, log_name, ignored):
     train_df = pd.DataFrame.from_dict(train_dict)
     test_df = pd.DataFrame.from_dict(test_dict)
 
+    # train_df = pd.DataFrame(train_features, columns=train_names)
+    # test_df = pd.DataFrame(test_features, columns=test_names)
 
-    #train_df = pd.DataFrame(train_features, columns=train_names)
-    #test_df = pd.DataFrame(test_features, columns=test_names)
-
-    #print(train_names)
+    # print(train_names)
     # add Case_ID
 
     train_df["Case_ID"] = train_case_ids
@@ -680,15 +678,15 @@ def data_declare_main(inp_folder, log_name, ignored):
 
 
 def move_dwd_files(inp_folder, output_folder, split_nr):
-    source = inp_folder # './baselineOutput/'
-    dest1 = './' + output_folder + '/split' + str(split_nr) + "/dwd/"
+    source = inp_folder  # './baselineOutput/'
+    dest1 = cwd + '/' + output_folder + '/split' + str(split_nr) + "/dwd/"
     files = os.listdir(source)
     for f in files:
         shutil.move(source + f, dest1)
 
 
-def run_declare_with_data(log_path, settings, results_folder):
-    for logNr in range(5):
+def run_declare_with_data(log_path, settings, results_folder, k_value, split_perc):
+    for logNr in range(k_value):
         logPath = log_path.format(logNr + 1)
         folder_name = "./dwdOutput/"
         if not os.path.exists(folder_name):
@@ -696,17 +694,15 @@ def run_declare_with_data(log_path, settings, results_folder):
 
         ignored = settings["ignored"]
 
-        data_declare_main(folder_name, logPath, ignored)
+        data_declare_main(folder_name, logPath, ignored, split_perc)
         move_dwd_files(folder_name, results_folder, logNr + 1)
 
 
-
 if __name__ == "__main__":
-    for log_nr in [1,2,3,4,5]:
-        #log_path = "logs/sepsis_tagged_er.xes"
+    for log_nr in [1, 2, 3, 4, 5]:
+        # log_path = "logs/sepsis_tagged_er.xes"
         log_path = "EnglishBPI/EnglishBPIChallenge2011_tagged_cc_{}.xes".format(log_nr)
         ignored = ["time:timestamp", "concept: name", "Label", "Start date", "End date", "Diagnosis", "Diagnosis code",
                    "Diagnosis Treatment", "Combination ID", "Treatment code", "Activity code"]
-
 
         data_declare_main(log_path, ignored)

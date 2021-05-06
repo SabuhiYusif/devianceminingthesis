@@ -4,7 +4,7 @@ Classifier with refinement.
 
 Given log
 """
-
+from constants import cwd
 from declaretemplates_data import *
 from deviancecommon import read_XES_log, xes_to_data_positional
 from deviancemining import split_log_train_test, extract_unique_events_transformed
@@ -616,7 +616,7 @@ class DRC:
 
                 # Save decision tree
                 if True:
-                    export_graphviz(data_dt, out_file="sample_dwd_trees/outputfile_{}.dot".format(str(key)),
+                    export_graphviz(data_dt, out_file=cwd + "/sample_dwd_trees/outputfile_{}.dot".format(str(key)),
                                     feature_names=list(map(str, train_fts)))
 
         return new_train_feature_names, new_train_features, new_test_feature_names, new_test_features
@@ -666,7 +666,7 @@ def data_declare_main(inp_folder, log_name, ignored):
 
 def move_dwd_files(inp_folder, output_folder, split_nr):
     source = inp_folder # './baselineOutput/'
-    dest1 = './' + output_folder + '/split' + str(split_nr) + "/dwd/"
+    dest1 = cwd + '/' + output_folder + '/split' + str(split_nr) + "/dwd/"
     files = os.listdir(source)
     for f in files:
         shutil.move(source + f, dest1)
