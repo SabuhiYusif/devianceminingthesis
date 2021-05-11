@@ -37,10 +37,6 @@ from skfeature.function.similarity_based import fisher_score
 from sklearn.decomposition import PCA
 from collections import defaultdict
 
-import pm4py
-from pm4py.objects.log.util import func
-from pm4py.objects.log.log import EventLog
-
 from payload_extractor import run_payload_extractor
 
 import arff
