@@ -628,7 +628,7 @@ from pathlib import Path
 from constants import cwd
 
 
-def xray(
+def evaluate(
         split_perc="0.2",
         file_name="",
         payload_type=None,
@@ -640,8 +640,6 @@ def xray(
 ):
     results_folder = "xray_results"
 
-    # cwd = os.path.abspath("/home/sabuhi/Thesis/devianceminingthesis/DevianceMiningPipeline")
-    print(cwd)
     result_folder_path = Path(cwd + "/xray_results")
 
     if result_folder_path.exists():
@@ -749,7 +747,7 @@ if __name__ == "__main__":
     min_samples = int(sys.argv[7])
     coverage_threshold = int(sys.argv[8])
 
-    xray(
+    evaluate(
         split_perc,
         fileName,
         payload_type,

@@ -823,12 +823,11 @@ class ExperimentRunner:
 
 
         # Train classifier
-        clf = DecisionTreeClassifier(max_depth=self.dt_max_depth, min_samples_leaf=self.dt_min_leaf)
-        # clf = LogisticRegression(random_state=2)
-        # X_train = np.nan_to_num(X_train)
-        # y_train = np.nan_to_num(y_train)
-        print(X_train)
-        print(y_train)
+        if self.classifier == "LOGISTIC_REGRESSION":
+            clf = LogisticRegression(random_state=2)
+        else:
+            clf = DecisionTreeClassifier(max_depth=self.dt_max_depth, min_samples_leaf=self.dt_min_leaf)
+
         clf.fit(X_train, y_train)
 
         # True to export tree .dot file
