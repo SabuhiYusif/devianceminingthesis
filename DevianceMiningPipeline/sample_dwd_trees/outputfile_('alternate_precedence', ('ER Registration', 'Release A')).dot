@@ -1,0 +1,20 @@
+digraph Tree {
+node [shape=box] ;
+0 [label="('Leucocytes', 'continuous') <= 153.0\ngini = 0.265\nsamples = 540\nvalue = [455, 85]"] ;
+1 [label="('LacticAcid', 'continuous') <= 3.25\ngini = 0.259\nsamples = 537\nvalue = [455, 82]"] ;
+0 -> 1 [labeldistance=2.5, labelangle=45, headlabel="True"] ;
+2 [label="('Diagnose_EC', 'literal') <= 0.5\ngini = 0.247\nsamples = 520\nvalue = [445, 75]"] ;
+1 -> 2 ;
+3 [label="gini = 0.245\nsamples = 519\nvalue = [445, 74]"] ;
+2 -> 3 ;
+4 [label="gini = 0.0\nsamples = 1\nvalue = [0, 1]"] ;
+2 -> 4 ;
+5 [label="('CRP', 'continuous') <= 10.5\ngini = 0.484\nsamples = 17\nvalue = [10, 7]"] ;
+1 -> 5 ;
+6 [label="gini = 0.0\nsamples = 6\nvalue = [6, 0]"] ;
+5 -> 6 ;
+7 [label="gini = 0.463\nsamples = 11\nvalue = [4, 7]"] ;
+5 -> 7 ;
+8 [label="gini = 0.0\nsamples = 3\nvalue = [0, 3]"] ;
+0 -> 8 [labeldistance=2.5, labelangle=-45, headlabel="False"] ;
+}

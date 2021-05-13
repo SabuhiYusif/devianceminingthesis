@@ -1330,42 +1330,43 @@ class ExperimentRunner:
         return results
 
 
-    def train_and_eval_benchmark(self):
+    def train_and_eval_benchmark(self, features=None):
 
         all_results = {}
         # MAKE SURE ALL METHODS USED ARE HERE. AND METHODS NOT USED ARE NOT!
         if not self.payload:
             print_order = ["bs", "dc", "tr", "tra", "mr", "mra", "hybrid"]
-            # if features["ia"]:
-            print("Started working on baseline.")
-            baseline_results = self.baseline_train()
-            all_results["bs"] = self.interpret_results(baseline_results, "baseline")
+            if features["ia"]:
+                print("Started working on baseline.")
+                baseline_results = self.baseline_train()
+                all_results["bs"] = self.interpret_results(baseline_results, "baseline")
 
-            # if features["declare"]:
-            print("Started working on declare.")
-            declare_results = self.declare_train()
-            all_results["dc"] = self.interpret_results(declare_results, "declare")
+            if features["declare"]:
+                print("Started working on declare.")
+                declare_results = self.declare_train()
+                all_results["dc"] = self.interpret_results(declare_results, "declare")
 
-            # if features["seq"]:
-            print("Started working on sequenceMR.")
-            sequence_results = self.sequence_train("mr")
-            all_results["mr"] = self.interpret_results(sequence_results, "sequence", "mr")
+            if features["seq"]:
+                print("Started working on sequenceMR.")
+                sequence_results = self.sequence_train("mr")
+                all_results["mr"] = self.interpret_results(sequence_results, "sequence", "mr")
 
-            print("Started working on sequenceTR.")
-            sequence_results = self.sequence_train("tr")
-            all_results["tr"] = self.interpret_results(sequence_results, "sequence", "tr")
+                print("Started working on sequenceTR.")
+                sequence_results = self.sequence_train("tr")
+                all_results["tr"] = self.interpret_results(sequence_results, "sequence", "tr")
 
-            print("Started working on sequenceTRA.")
-            sequence_results = self.sequence_train("tra")
-            all_results["tra"] = self.interpret_results(sequence_results, "sequence", "tra")
+                print("Started working on sequenceTRA.")
+                sequence_results = self.sequence_train("tra")
+                all_results["tra"] = self.interpret_results(sequence_results, "sequence", "tra")
 
-            print("Started working on sequenceMRA.")
-            sequence_results = self.sequence_train("mra")
-            all_results["mra"] = self.interpret_results(sequence_results, "sequence", "mra")
+                print("Started working on sequenceMRA.")
+                sequence_results = self.sequence_train("mra")
+                all_results["mra"] = self.interpret_results(sequence_results, "sequence", "mra")
 
-            print("Started working on hybrid.")
-            hybrid_results = self.hybrid_train()
-            all_results["hybrid"] = self.interpret_results(hybrid_results, "hybrid")
+            if features["hyb"]:
+                print("Started working on hybrid.")
+                hybrid_results = self.hybrid_train()
+                all_results["hybrid"] = self.interpret_results(hybrid_results, "hybrid")
 
         if self.payload:
             print_order = []
@@ -1375,72 +1376,78 @@ class ExperimentRunner:
                 payload_results = self.payload_train()
                 all_results["payload"] = self.interpret_results(payload_results, "payload")
 
-                print("Started working on baseline with data.")
-                baseline_results = self.baseline_train_with_data()
-                all_results["bs_data"] = self.interpret_results(baseline_results, "baseline")
+                if features["ia"]:
+                    print("Started working on baseline with data.")
+                    baseline_results = self.baseline_train_with_data()
+                    all_results["bs_data"] = self.interpret_results(baseline_results, "baseline")
+                if features["declare"]:
+                    print("Started working on declare with data.")
+                    declare_results = self.declare_train_with_data()
+                    all_results["dc_data"] = self.interpret_results(declare_results, "declare")
 
-                print("Started working on declare with data.")
-                declare_results = self.declare_train_with_data()
-                all_results["dc_data"] = self.interpret_results(declare_results, "declare")
+                if features["seq"]:
+                    print("Started working on sequenceMR with data.")
+                    sequence_results = self.sequence_train_with_data("mr")
+                    all_results["mr_data"] = self.interpret_results(sequence_results, "sequence", "mr")
 
-                print("Started working on sequenceMR with data.")
-                sequence_results = self.sequence_train_with_data("mr")
-                all_results["mr_data"] = self.interpret_results(sequence_results, "sequence", "mr")
+                    print("Started working on sequenceTR with data.")
+                    sequence_results = self.sequence_train_with_data("tr")
+                    all_results["tr_data"] = self.interpret_results(sequence_results, "sequence", "tr")
 
-                print("Started working on sequenceTR with data.")
-                sequence_results = self.sequence_train_with_data("tr")
-                all_results["tr_data"] = self.interpret_results(sequence_results, "sequence", "tr")
+                    print("Started working on sequenceTRA with data.")
+                    sequence_results = self.sequence_train_with_data("tra")
+                    all_results["tra_data"] = self.interpret_results(sequence_results, "sequence", "tra")
 
-                print("Started working on sequenceTRA with data.")
-                sequence_results = self.sequence_train_with_data("tra")
-                all_results["tra_data"] = self.interpret_results(sequence_results, "sequence", "tra")
+                    print("Started working on sequenceMRA with data.")
+                    sequence_results = self.sequence_train_with_data("mra")
+                    all_results["mra_data"] = self.interpret_results(sequence_results, "sequence", "mra")
 
-                print("Started working on sequenceMRA with data.")
-                sequence_results = self.sequence_train_with_data("mra")
-                all_results["mra_data"] = self.interpret_results(sequence_results, "sequence", "mra")
-
-                print("Started working on hybrid with data.")
-                payload_results = self.hybrid_with_data()
-                all_results["hybrid_data"] = self.interpret_results(payload_results, "hybrid_data")
+                if features["hyb"]:
+                    print("Started working on hybrid with data.")
+                    payload_results = self.hybrid_with_data()
+                    all_results["hybrid_data"] = self.interpret_results(payload_results, "hybrid_data")
 
             if self.payload_type == "both":
                 print_order += ["bs", "dc", "dc_data", "dc_dwd",  "dc_dwd_payload", "hybrid", "hybrid_data", "hybrid_dwd", "hybrid_dwd_payload"]
 
-                print("Started working on baseline.")
-                baseline_results = self.baseline_train()
-                all_results["bs"] = self.interpret_results(baseline_results, "baseline")
+                if features["ia"]:
+                    print("Started working on baseline.")
+                    baseline_results = self.baseline_train()
+                    all_results["bs"] = self.interpret_results(baseline_results, "baseline")
 
-                print("Started working on declare.")
-                declare_results = self.declare_train()
-                all_results["dc"] = self.interpret_results(declare_results, "declare")
+                if features["declare"]:
+                    print("Started working on declare.")
+                    declare_results = self.declare_train()
+                    all_results["dc"] = self.interpret_results(declare_results, "declare")
 
-                print("Started working on declare with payload.")
-                declare_results = self.declare_train_with_data()
-                all_results["dc_data"] = self.interpret_results(declare_results, "declare_payload")
+                if features["hyb"]:
+                    print("Started working on declare with payload.")
+                    declare_results = self.declare_train_with_data()
+                    all_results["dc_data"] = self.interpret_results(declare_results, "declare_payload")
 
-                print("Started working on declare with dwd.")
-                declare_results = self.declare_train_with_dwd()
-                all_results["dc_dwd"] = self.interpret_results(declare_results, "declare_dwd")
+                    print("Started working on declare with dwd.")
+                    declare_results = self.declare_train_with_dwd()
+                    all_results["dc_dwd"] = self.interpret_results(declare_results, "declare_dwd")
 
-                print("Started working on declare with dwd and payload.")
-                declare_results = self.declare_train_with_dwd_data()
-                all_results["dc_dwd_payload"] = self.interpret_results(declare_results, "declare_payload_dwd")
+                    print("Started working on declare with dwd and payload.")
+                    declare_results = self.declare_train_with_dwd_data()
+                    all_results["dc_dwd_payload"] = self.interpret_results(declare_results, "declare_payload_dwd")
 
-                print("Started working on hybrid.")
-                payload_results = self.hybrid_train()
-                all_results["hybrid"] = self.interpret_results(payload_results, "hybrid")
+                    print("Started working on hybrid.")
+                    payload_results = self.hybrid_train()
+                    all_results["hybrid"] = self.interpret_results(payload_results, "hybrid")
 
-                print("Started working on hybrid with data.")
-                payload_results = self.hybrid_with_data()
-                all_results["hybrid_data"] = self.interpret_results(payload_results, "hybrid_data")
+                    print("Started working on hybrid with data.")
+                    payload_results = self.hybrid_with_data()
+                    all_results["hybrid_data"] = self.interpret_results(payload_results, "hybrid_data")
 
-                print("Started working on hybrid with dwd.")
-                payload_results = self.hybrid_with_dwd()
-                all_results["hybrid_dwd"] = self.interpret_results(payload_results, "hybrid_dwd")
+                    print("Started working on hybrid with dwd.")
+                    payload_results = self.hybrid_with_dwd()
+                    all_results["hybrid_dwd"] = self.interpret_results(payload_results, "hybrid_dwd")
 
-                print("Started working on hybrid with dwd and usual payload.")
-                payload_results = self.hybrid_with_dwd_and_payload()
-                all_results["hybrid_dwd_payload"] = self.interpret_results(payload_results, "hybrid_data_dwd")
+                    print("Started working on hybrid with dwd and usual payload.")
+                    payload_results = self.hybrid_with_dwd_and_payload()
+                    all_results["hybrid_dwd_payload"] = self.interpret_results(payload_results, "hybrid_data_dwd")
 
 
 

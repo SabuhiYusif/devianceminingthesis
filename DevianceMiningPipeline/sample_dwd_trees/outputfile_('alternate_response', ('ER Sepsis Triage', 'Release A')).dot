@@ -1,0 +1,24 @@
+digraph Tree {
+node [shape=box] ;
+0 [label="('LacticAcid', 'continuous') <= 3.15\ngini = 0.263\nsamples = 539\nvalue = [455, 84]"] ;
+1 [label="('Diagnose_HB', 'literal') <= 0.5\ngini = 0.254\nsamples = 528\nvalue = [449, 79]"] ;
+0 -> 1 [labeldistance=2.5, labelangle=45, headlabel="True"] ;
+2 [label="('Diagnose_EC', 'literal') <= 0.5\ngini = 0.252\nsamples = 527\nvalue = [449, 78]"] ;
+1 -> 2 ;
+3 [label="gini = 0.25\nsamples = 526\nvalue = [449, 77]"] ;
+2 -> 3 ;
+4 [label="gini = 0.0\nsamples = 1\nvalue = [0, 1]"] ;
+2 -> 4 ;
+5 [label="gini = 0.0\nsamples = 1\nvalue = [0, 1]"] ;
+1 -> 5 ;
+6 [label="('DiagnosticECG', 'boolean') <= 0.5\ngini = 0.496\nsamples = 11\nvalue = [6, 5]"] ;
+0 -> 6 [labeldistance=2.5, labelangle=-45, headlabel="False"] ;
+7 [label="gini = 0.0\nsamples = 4\nvalue = [4, 0]"] ;
+6 -> 7 ;
+8 [label="('Age', 'discrete') <= 82.5\ngini = 0.408\nsamples = 7\nvalue = [2, 5]"] ;
+6 -> 8 ;
+9 [label="gini = 0.0\nsamples = 4\nvalue = [0, 4]"] ;
+8 -> 9 ;
+10 [label="gini = 0.444\nsamples = 3\nvalue = [2, 1]"] ;
+8 -> 10 ;
+}

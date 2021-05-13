@@ -1,0 +1,16 @@
+digraph Tree {
+node [shape=box] ;
+0 [label="('Diagnose_Missing', 'literal') <= 0.5\ngini = 0.187\nsamples = 832\nvalue = [745, 87]"] ;
+1 [label="('Leucocytes', 'continuous') <= 28.5\ngini = 0.236\nsamples = 637\nvalue = [550, 87]"] ;
+0 -> 1 [labeldistance=2.5, labelangle=45, headlabel="True"] ;
+2 [label="('Diagnose_LB', 'literal') <= 0.5\ngini = 0.232\nsamples = 635\nvalue = [550, 85]"] ;
+1 -> 2 ;
+3 [label="gini = 0.228\nsamples = 633\nvalue = [550, 83]"] ;
+2 -> 3 ;
+4 [label="gini = 0.0\nsamples = 2\nvalue = [0, 2]"] ;
+2 -> 4 ;
+5 [label="gini = 0.0\nsamples = 2\nvalue = [0, 2]"] ;
+1 -> 5 ;
+6 [label="gini = 0.0\nsamples = 195\nvalue = [195, 0]"] ;
+0 -> 6 [labeldistance=2.5, labelangle=-45, headlabel="False"] ;
+}

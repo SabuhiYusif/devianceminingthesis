@@ -1,0 +1,28 @@
+digraph Tree {
+node [shape=box] ;
+0 [label="('CRP', 'continuous') <= 6.5\ngini = 0.465\nsamples = 218\nvalue = [138, 80]"] ;
+1 [label="('Diagnose_VA', 'literal') <= 0.5\ngini = 0.25\nsamples = 41\nvalue = [35, 6]"] ;
+0 -> 1 [labeldistance=2.5, labelangle=45, headlabel="True"] ;
+2 [label="('DiagnosticUrinarySediment', 'boolean') <= 0.5\ngini = 0.219\nsamples = 40\nvalue = [35, 5]"] ;
+1 -> 2 ;
+3 [label="gini = 0.0\nsamples = 19\nvalue = [19, 0]"] ;
+2 -> 3 ;
+4 [label="gini = 0.363\nsamples = 21\nvalue = [16, 5]"] ;
+2 -> 4 ;
+5 [label="gini = 0.0\nsamples = 1\nvalue = [0, 1]"] ;
+1 -> 5 ;
+6 [label="('CRP', 'continuous') <= 203.5\ngini = 0.487\nsamples = 177\nvalue = [103, 74]"] ;
+0 -> 6 [labeldistance=2.5, labelangle=-45, headlabel="False"] ;
+7 [label="('CRP', 'continuous') <= 124.5\ngini = 0.475\nsamples = 157\nvalue = [96, 61]"] ;
+6 -> 7 ;
+8 [label="gini = 0.493\nsamples = 122\nvalue = [68, 54]"] ;
+7 -> 8 ;
+9 [label="gini = 0.32\nsamples = 35\nvalue = [28, 7]"] ;
+7 -> 9 ;
+10 [label="('Age', 'discrete') <= 77.5\ngini = 0.455\nsamples = 20\nvalue = [7, 13]"] ;
+6 -> 10 ;
+11 [label="gini = 0.497\nsamples = 13\nvalue = [7, 6]"] ;
+10 -> 11 ;
+12 [label="gini = 0.0\nsamples = 7\nvalue = [0, 7]"] ;
+10 -> 12 ;
+}

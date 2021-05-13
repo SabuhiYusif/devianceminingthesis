@@ -1,0 +1,28 @@
+digraph Tree {
+node [shape=box] ;
+0 [label="('CRP', 'continuous') <= 204.5\ngini = 0.459\nsamples = 202\nvalue = [130, 72]"] ;
+1 [label="('LacticAcid', 'continuous') <= 0.95\ngini = 0.442\nsamples = 188\nvalue = [126, 62]"] ;
+0 -> 1 [labeldistance=2.5, labelangle=45, headlabel="True"] ;
+2 [label="('CRP', 'continuous') <= 60.5\ngini = 0.486\nsamples = 84\nvalue = [49, 35]"] ;
+1 -> 2 ;
+3 [label="gini = 0.472\nsamples = 76\nvalue = [47, 29]"] ;
+2 -> 3 ;
+4 [label="gini = 0.375\nsamples = 8\nvalue = [2, 6]"] ;
+2 -> 4 ;
+5 [label="('Diagnose_E', 'literal') <= 0.5\ngini = 0.384\nsamples = 104\nvalue = [77, 27]"] ;
+1 -> 5 ;
+6 [label="gini = 0.362\nsamples = 97\nvalue = [74, 23]"] ;
+5 -> 6 ;
+7 [label="gini = 0.49\nsamples = 7\nvalue = [3, 4]"] ;
+5 -> 7 ;
+8 [label="('Leucocytes', 'continuous') <= 15.95\ngini = 0.408\nsamples = 14\nvalue = [4, 10]"] ;
+0 -> 8 [labeldistance=2.5, labelangle=-45, headlabel="False"] ;
+9 [label="gini = 0.0\nsamples = 6\nvalue = [0, 6]"] ;
+8 -> 9 ;
+10 [label="('DiagnosticUrinaryCulture', 'boolean') <= 0.5\ngini = 0.5\nsamples = 8\nvalue = [4, 4]"] ;
+8 -> 10 ;
+11 [label="gini = 0.32\nsamples = 5\nvalue = [1, 4]"] ;
+10 -> 11 ;
+12 [label="gini = 0.0\nsamples = 3\nvalue = [3, 0]"] ;
+10 -> 12 ;
+}

@@ -1,0 +1,28 @@
+digraph Tree {
+node [shape=box] ;
+0 [label="('Age', 'discrete') <= 42.5\ngini = 0.469\nsamples = 242\nvalue = [151, 91]"] ;
+1 [label="('SIRSCritLeucos', 'boolean') <= 0.5\ngini = 0.375\nsamples = 8\nvalue = [2, 6]"] ;
+0 -> 1 [labeldistance=2.5, labelangle=45, headlabel="True"] ;
+2 [label="('Age', 'discrete') <= 27.5\ngini = 0.245\nsamples = 7\nvalue = [1, 6]"] ;
+1 -> 2 ;
+3 [label="gini = 0.0\nsamples = 1\nvalue = [1, 0]"] ;
+2 -> 3 ;
+4 [label="gini = 0.0\nsamples = 6\nvalue = [0, 6]"] ;
+2 -> 4 ;
+5 [label="gini = 0.0\nsamples = 1\nvalue = [1, 0]"] ;
+1 -> 5 ;
+6 [label="('Diagnose_E', 'literal') <= 0.5\ngini = 0.463\nsamples = 234\nvalue = [149, 85]"] ;
+0 -> 6 [labeldistance=2.5, labelangle=-45, headlabel="False"] ;
+7 [label="('CRP', 'continuous') <= 5.5\ngini = 0.454\nsamples = 221\nvalue = [144, 77]"] ;
+6 -> 7 ;
+8 [label="gini = 0.45\nsamples = 219\nvalue = [144, 75]"] ;
+7 -> 8 ;
+9 [label="gini = 0.0\nsamples = 2\nvalue = [0, 2]"] ;
+7 -> 9 ;
+10 [label="('Age', 'discrete') <= 67.5\ngini = 0.473\nsamples = 13\nvalue = [5, 8]"] ;
+6 -> 10 ;
+11 [label="gini = 0.0\nsamples = 2\nvalue = [2, 0]"] ;
+10 -> 11 ;
+12 [label="gini = 0.397\nsamples = 11\nvalue = [3, 8]"] ;
+10 -> 12 ;
+}
